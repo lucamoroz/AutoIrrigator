@@ -6,7 +6,7 @@
 #include <WiFiUdp.h>
 #include "../../.pio/libdeps/nodemcu/EasyNTPClient/src/EasyNTPClient.h"
 
-#define UPDATE_INTERVAL 6 * 3600 * 1000
+const unsigned long UPDATE_INTERVAL = 6 * 3600; // seconds
 
 const String dayToString[] = {
         "Sunday",
@@ -18,7 +18,6 @@ const String dayToString[] = {
         "Saturday",
         "Everyday"
 };
-// TODO singleton
 
 class RemoteTime {
 public:
@@ -27,48 +26,28 @@ public:
         : ntpClient(udp, "pool.ntp.org", ((hOffset*60*60)+(mOffset*60))) { }
 
     struct tm* getTime() {
-        time_t unixTimestamp = this->ntpClient.getUnixTime();
+        time_t unixTimestamp = getUnixTime();
         return localtime(&unixTimestamp);
     }
-    
-    uint8_t getWeekDay() {
-        time_t unixTimestamp = this->ntpClient.getUnixTime();
 
-        struct tm *now_tm = localtime(&unixTimestamp);
-        return now_tm->tm_wday; // days since sunday
-    }
-
-    uint8_t getHour() {
-        time_t unixTimestamp = this->ntpClient.getUnixTime();
-
-        struct tm *now_tm = localtime(&unixTimestamp);
-        return now_tm->tm_hour;
-    }
-
-    uint8_t getMinutes() {
-        time_t unixTimestamp = this->ntpClient.getUnixTime();
-        struct tm *now_tm = localtime(&unixTimestamp);
-        return now_tm->tm_min;
-    }
-
-    unsigned long getUnixTimeMillis() {
-        // TODO FIX to reduce number of net calls
+private:
+    unsigned long getUnixTime() {
         // Arduino timestamp overflows after ~50 days and reset to zero
-        unsigned long currTimestamp = Arduino_h::millis();
+        unsigned long currSeconds = Arduino_h::millis() / 1000;
 
-        if (currTimestamp < lastUpdateTimestamp || currTimestamp - lastUpdateTimestamp > UPDATE_INTERVAL) {
-            this->lastUpdateTimestamp = currTimestamp;
-            this->lastUnixTimestamp = ntpClient.getUnixTime() * 1000; // Returns Unix time in seconds
-            return this->lastUnixTimestamp;
+        if (lastUpdateSeconds == 0 || (currSeconds - lastUpdateSeconds) > UPDATE_INTERVAL) {
+            lastUpdateSeconds = currSeconds;
+            lastUnixTimestamp = ntpClient.getUnixTime(); // Returns Unix time in seconds
+            return lastUnixTimestamp;
         } else {
-            unsigned long diff = currTimestamp - lastUpdateTimestamp;
-            return this->lastUnixTimestamp + diff;
+            unsigned long diff = currSeconds - lastUpdateSeconds;
+            return (lastUnixTimestamp + diff);
         }
     }
 
 private:
     EasyNTPClient ntpClient;
-    unsigned long lastUpdateTimestamp = LONG_MAX;
+    unsigned long lastUpdateSeconds = 0;
     unsigned long lastUnixTimestamp = 0;
 };
 
