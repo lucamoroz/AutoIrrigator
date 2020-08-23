@@ -5,19 +5,7 @@
 #include <EEPROM.h>
 #include <../lib/WaterPump/WaterPump.h>
 #include <../lib/WetServer.h>
-
-// Board - data
-#define EEPROM_SIZE 4096
-
-#define WATER_PUMP_PIN 16
-
-// Define time zone
-#define HOUR_OFFSET 2
-#define MINUTES_OFFSET 0
-
-const char *SSID     = "";
-const char *PASSWORD = "";
-const char *HOSTNAME = "AutoIrrigator";
+#include <CONFIG.h>
 
 WiFiUDP udp;
 

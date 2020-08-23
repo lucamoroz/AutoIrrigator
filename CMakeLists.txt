@@ -30,4 +30,4 @@ add_custom_target(
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-add_executable(Z_DUMMY_TARGET ${SRC_LIST} lib/WaterPump/WaterPump.h lib/RemoteTime/RemoteTime.h lib/Pages/Index.h lib/WetServer.h)
+add_executable(Z_DUMMY_TARGET ${SRC_LIST} lib/WaterPump/WaterPump.h lib/RemoteTime/RemoteTime.h lib/Pages/Index.h lib/WetServer.h src/CONFIG.h)
