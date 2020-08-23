@@ -7,6 +7,7 @@
 
 using namespace std;
 
+const int EEPROM_ADDR_BEGIN = 0;
 #define EVERYDAY 7
 
 
@@ -28,8 +29,9 @@ struct IrrigationInterval {
  */
 class WaterPump {
 public:
-    RemoteTime &remoteTime;
     uint8_t pumpPin;
+    RemoteTime &remoteTime;
+
     vector<IrrigationInterval> intervals;
     bool isEnabled = true;
     bool isActive = false;
@@ -38,16 +40,24 @@ public:
 
     WaterPump(uint8_t pumpPin, RemoteTime &remoteTime) : pumpPin(pumpPin), remoteTime(remoteTime) {
         pinMode(pumpPin, OUTPUT);
-        // todo save & restore enabled
+        this->isEnabled = loadStatus();
         this->intervals = loadIntervals();
     }
 
     void enable() {
         this->isEnabled = true;
+        saveStatusToMemory();
     }
 
     void disable() {
         this->isEnabled = false;
+        saveStatusToMemory();
+    }
+
+    void saveStatusToMemory() {
+        int addr = EEPROM_ADDR_BEGIN;
+        EEPROM.write(addr, isEnabled);
+        EEPROM.commit();
     }
 
     void turnOn() {
@@ -111,15 +121,16 @@ public:
      * @param newIntervals
      */
     void setIrrigationIntervals(vector<IrrigationInterval> &newIntervals) {
-        uint8_t addr = 0; // TODO init starting address and set maximum usable memory
+        // +1 for water pump status
+        int addr = EEPROM_ADDR_BEGIN + 1;
 
         EEPROM.write(addr, (uint8_t) newIntervals.size());
 
         addr += sizeof(uint8_t);
 
-        for (int i=0; i<newIntervals.size(); i++) {
-            newIntervals[i].id = addr;
-            EEPROM.put(addr, newIntervals[i]);
+        for (auto & newInterval : newIntervals) {
+            newInterval.id = addr;
+            EEPROM.put(addr, newInterval);
             addr += sizeof(IrrigationInterval);
         }
 
@@ -154,8 +165,10 @@ private:
     long forceStartTimestamp;
     long forceDurationMillis = -1;
 
-    vector<IrrigationInterval> loadIntervals() {
-        uint8_t addr = 0;
+    static vector<IrrigationInterval> loadIntervals() {
+        // +1 for water pump status
+        int addr = EEPROM_ADDR_BEGIN + 1;
+
         uint8_t size = EEPROM.read(addr);
         addr += sizeof(uint8_t);
 
@@ -170,6 +183,10 @@ private:
         }
 
         return loadedIntervals;
+    }
+
+    static bool loadStatus() {
+        return EEPROM.read(EEPROM_ADDR_BEGIN);
     }
 
     bool intervalsContain(struct tm *time) {
