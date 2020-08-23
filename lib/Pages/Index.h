@@ -9,7 +9,11 @@ using namespace std;
 
 namespace Index {
 
-    void getHtmlIntervalsList(const vector<IrrigationInterval> &intervals, string &res) {
+    string getHtmlIntervalsList(const vector<IrrigationInterval> &intervals) {
+        if (intervals.empty()) {
+            return "No intervals defined.";
+        }
+
         string intervalsMsg = "";
         intervalsMsg += "<ul>";
         for (const auto& intv : intervals) {
@@ -36,7 +40,7 @@ namespace Index {
 
         intervalsMsg += "</ul>";
 
-        res = intervalsMsg;
+        return intervalsMsg;
     }
 
     /**
@@ -52,22 +56,15 @@ namespace Index {
         const char* activeMsg = pump.isActive ? "<font color=\"darkgreen\">active</font>" : "<font color=\"darkgrey\">inactive</font>";
 
         char forceTimeMsg[80];
-
         if (pump.isForcedOn) {
-            snprintf(forceTimeMsg, 80, "<br><font color=\"red\">Warning</font>: remaining force-time seconds: %ld", pump.forcedOnRemainingMillis/1000);
+            snprintf(forceTimeMsg, sizeof(forceTimeMsg), "<br><font color=\"red\">Warning</font>: remaining force-time seconds: %ld", pump.forcedOnRemainingMillis/1000);
         } else {
             sprintf(forceTimeMsg, "");
         }
 
-        char timeMsg[30];
+        string intervalsMsg = getHtmlIntervalsList(pump.intervals);
 
-        // TODO this thing has problems
-        //strftime(timeMsg, 30, "%d-%b-%Y %H:%M", pump.getWaterPumpTime());
-
-        string intervalsMsg;
-        getHtmlIntervalsList(pump.intervals, intervalsMsg);
-
-        snprintf(str, 3000, R"(
+        snprintf(str, sizeof(str), R"(
 <html>
 <head>
 <title>Dashboard</title>
@@ -85,10 +82,8 @@ namespace Index {
 
 <br><br>
 
-Water pump time: %s
-
-<br><br>
-
+Irrigation intervals:
+<br>
 %s
 
 <br>
@@ -130,7 +125,7 @@ Turn on the water pump for a desired number of seconds:
 
 </html>
 
-        )", msg.c_str(), enabledMsg, activeMsg, forceTimeMsg, "timeMsg", intervalsMsg.c_str());
+        )", msg.c_str(), enabledMsg, activeMsg, forceTimeMsg, intervalsMsg.c_str());
 
         return str;
     }
