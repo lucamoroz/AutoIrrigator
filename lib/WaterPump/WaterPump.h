@@ -22,10 +22,10 @@ struct IrrigationInterval {
 };
 
 /**
- * Class that handles a water pump attached to GPIO.
+ * Class that handles a water pump attached to GPIO (pin: WATER_PUMP_PIN in CONFIG.h).
  * To work properly, before instantiating the class, EEPROM.begin(size) must be called.
  *
- * On instantiation previously set intervals are restored.
+ * On creation previously set intervals are restored using EEPROM memory.
  */
 class WaterPump {
 public:
@@ -40,24 +40,18 @@ public:
 
     WaterPump(uint8_t pumpPin, RemoteTime &remoteTime) : pumpPin(pumpPin), remoteTime(remoteTime) {
         pinMode(pumpPin, OUTPUT);
-        this->isEnabled = loadStatus();
+        this->isEnabled = loadIsEnabled();
         this->intervals = loadIntervals();
     }
 
     void enable() {
         this->isEnabled = true;
-        saveStatusToMemory();
+        saveIsEnabled(this->isEnabled);
     }
 
     void disable() {
         this->isEnabled = false;
-        saveStatusToMemory();
-    }
-
-    void saveStatusToMemory() {
-        int addr = EEPROM_ADDR_BEGIN;
-        EEPROM.write(addr, isEnabled);
-        EEPROM.commit();
+        saveIsEnabled(this->isEnabled);
     }
 
     void turnOn() {
@@ -67,6 +61,10 @@ public:
         }
     }
 
+    /**
+     * Activates the water pump for the given seconds.
+     * @param seconds
+     */
     void turnOnTimed(long seconds) {
         if (seconds <= 0) return;
 
@@ -76,6 +74,9 @@ public:
         turnOn();
     }
 
+    /**
+     * Turn of the water pump and any timed-activation.
+     */
     void turnOff() {
         if (this->isForcedOn) {
             this->isForcedOn = false;
@@ -88,13 +89,13 @@ public:
     }
 
     /**
-     * Must be called repeatedly to update the current status.
+     * Must be called repeatedly to update the current status and eventually activate the water pump.
      */
     void check() {
 
         // Update forced-on status if necessary
         if (this->isForcedOn) {
-            long nowTimestamp = millis();
+            unsigned long nowTimestamp = millis();
             this->forcedOnRemainingMillis = forceDurationMillis - (nowTimestamp - forceStartTimestamp);
             if ( forcedOnRemainingMillis < 0) {
                 this->isForcedOn = false;
@@ -106,7 +107,7 @@ public:
         bool shouldBeOn = false;
         if (!this->isForcedOn && this->isEnabled) {
             struct tm *now = remoteTime.getTime();
-            shouldBeOn = intervalsContain(now);
+            shouldBeOn = intervalsContain(now, this->intervals);
         }
 
         if (this->isForcedOn || shouldBeOn)
@@ -162,8 +163,8 @@ public:
     }
 
 private:
-    long forceStartTimestamp;
-    long forceDurationMillis = -1;
+    unsigned long forceStartTimestamp = 0;
+    unsigned long forceDurationMillis = 0;
 
     static vector<IrrigationInterval> loadIntervals() {
         // +1 for water pump status
@@ -185,11 +186,17 @@ private:
         return loadedIntervals;
     }
 
-    static bool loadStatus() {
+    static void saveIsEnabled(bool isEnabled) {
+        int addr = EEPROM_ADDR_BEGIN;
+        EEPROM.write(addr, isEnabled);
+        EEPROM.commit();
+    }
+
+    static bool loadIsEnabled() {
         return EEPROM.read(EEPROM_ADDR_BEGIN);
     }
 
-    bool intervalsContain(struct tm *time) {
+    static bool intervalsContain(struct tm *time, vector<IrrigationInterval> intervals) {
         for (const auto& interval : intervals) {
 
             if (

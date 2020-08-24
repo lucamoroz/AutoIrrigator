@@ -7,8 +7,7 @@
 
 ESP8266WebServer espServer(80);
 
-// TODO refactor with a "master server" that calls init for each sub-server (ie waterpump or others) with a common init
-// interface
+// TODO to improve extensibility, there could be a "master" server that calls init() for each service (like WetServer)
 
 class WetServer {
 public:
@@ -30,6 +29,9 @@ public:
         espServer.begin();
     }
 
+    /**
+     * Must be called repeatedly to accept incoming HTTP requests.
+     */
     void handleClient() {
         espServer.handleClient();
     }
