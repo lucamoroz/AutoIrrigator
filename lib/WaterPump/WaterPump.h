@@ -8,6 +8,7 @@
 using namespace std;
 
 const int EEPROM_ADDR_BEGIN = 0;
+const int MAX_INTERVALS_NUMBER = 254;
 #define EVERYDAY 7
 
 
@@ -26,6 +27,8 @@ struct IrrigationInterval {
  * To work properly, before instantiating the class, EEPROM.begin(size) must be called.
  *
  * On creation previously set intervals are restored using EEPROM memory.
+ *
+ * The number of intervals can't exceed 254.
  */
 class WaterPump {
 public:
@@ -122,6 +125,11 @@ public:
      * @param newIntervals
      */
     void setIrrigationIntervals(vector<IrrigationInterval> &newIntervals) {
+        if (newIntervals.size() >= MAX_INTERVALS_NUMBER) {
+            Serial.println("Maximum number of intervals reached.");
+            return;
+        }
+
         // +1 for water pump status
         int addr = EEPROM_ADDR_BEGIN + 1;
 
@@ -173,7 +181,9 @@ private:
         uint8_t size = EEPROM.read(addr);
         addr += sizeof(uint8_t);
 
-        if (size <= 0)
+        // Important note: after erasing EEPROM (filled with 0xFF) the size will be 255, so we assume no interval
+        // has been set
+        if (size <= 0 || size == 255)
             return vector<IrrigationInterval>();
 
         vector<IrrigationInterval> loadedIntervals(size);

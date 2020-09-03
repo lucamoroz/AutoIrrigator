@@ -18,6 +18,7 @@ See https://docs.platformio.org/en/latest/projectconf/section_env_upload.html#up
 
 Finally you can:
 - Build project: `platformio run`
+- Erase EEPROM flash memory (very important for the first upload!): `pio run --target erase`
 - Upload to board: `platformio run -- target upload`
 
 ## Hardware setup
